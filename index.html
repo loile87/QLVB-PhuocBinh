@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Theo Dõi Nhiệm Vụ QLVB Hằng Ngày</title>
+    <!-- Bootstrap 5 CSS & FontAwesome Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar-brand { font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-stat { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
+        .card-stat:hover { transform: translateY(-3px); }
+        .bg-gradient-primary { background: linear-gradient(45deg, #0d6efd, #0dcaf0); color: white; }
+        .bg-gradient-success { background: linear-gradient(45deg, #198754, #20c997); color: white; }
+        .bg-gradient-danger { background: linear-gradient(45deg, #dc3545, #ff4d5a); color: white; }
+        .bg-gradient-warning { background: linear-gradient(45deg, #ffc107, #ffca2c); color: #212529; }
+        .table-responsive { background: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .badge-status { font-size: 0.85rem; padding: 6px 12px; border-radius: 20px; }
+        .filter-box { background: white; border-radius: 10px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="fa-solid fa-list-check me-2"></i>Hệ Thống Theo Dõi Nhiệm Vụ QLVB</a>
+            <div class="d-flex align-items-center">
+                <div id="userInfo" class="text-white me-3 d-none">
+                    <i class="fa-solid fa-user-circle me-1"></i> <span id="userDisplayName"></span> (<span id="userDeptDisplay"></span>)
+                </div>
+                <button id="btnLoginModal" class="btn btn-light btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#loginModal">
+                    <i class="fa-solid fa-right-to-bracket me-1"></i> Đăng nhập
+                </button>
+                <button id="btnLogout" class="btn btn-outline-light btn-sm fw-bold d-none" onclick="logout()">
+                    <i class="fa-solid fa-right-from-bracket me-1"></i> Đăng xuất
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        
+        <!-- Action Toolbar -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="fw-bold text-secondary mb-0"><i class="fa-solid fa-chart-pie me-2"></i>Dashboard & Báo Cáo Tiến Độ</h4>
+            <div>
+                <button id="btnAddNew" class="btn btn-success d-none shadow-sm" data-bs-toggle="modal" data-bs-target="#addDocModal">
+                    <i class="fa-solid fa-plus me-1"></i> Thêm nhiệm vụ mới
+                </button>
+                <button class="btn btn-outline-secondary shadow-sm" onclick="loadData()">
+                    <i class="fa-solid fa-rotate me-1"></i> Tải lại dữ liệu
+                </button>
+            </div>
+        </div>
+
+        <!-- Thống kê Card Dashboard -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card card-stat bg-gradient-primary p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-1">Tổng số nhiệm vụ</h6>
+                            <h2 class="fw-bold mb-0" id="statTotal">0</h2>
+                        </div>
+                        <i class="fa-solid fa-folder-open fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-stat bg-gradient-success p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-1">Hoàn thành (Đúng/Trước hạn)</h6>
+                            <h2 class="fw-bold mb-0" id="statCompleted">0</h2>
+                        </div>
+                        <i class="fa-solid fa-circle-check fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-stat bg-gradient-warning p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-1">Đang xử lý</h6>
+                            <h2 class="fw-bold mb-0" id="statProcessing">0</h2>
+                        </div>
+                        <i class="fa-solid fa-clock-rotate-left fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-stat bg-gradient-danger p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase mb-1">Quá hạn xử lý</h6>
+                            <h2 class="fw-bold mb-0" id="statOverdue">0</h2>
+                        </div>
+                        <i class="fa-solid fa-triangle-exclamation fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Biểu đồ & Bộ Lọc -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card p-3 shadow-sm h-100">
+                    <h6 class="fw-bold text-center text-muted mb-3">Tỷ lệ Trạng thái Xử lý</h6>
+                    <div style="height: 230px;"><canvas id="statusChart"></canvas></div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="filter-box h-100 d-flex flex-column justify-content-center">
+                    <h6 class="fw-bold text-secondary mb-3"><i class="fa-solid fa-filter me-1"></i>Bộ Lọc Tìm Kiếm Nhiệm Vụ</h6>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Phòng ban/Đơn vị:</label>
+                            <select id="filterDept" class="form-select form-select-sm" onchange="applyFilters()">
+                                <option value="ALL">-- Tất cả phòng ban --</option>
+                                <option value="Phòng KTHT&ĐT">Phòng KTHT&ĐT</option>
+                                <option value="Phòng VH-XH">Phòng VH-XH</option>
+                                <option value="Trung tâm PVHCC">Trung tâm PVHCC</option>
+                                <option value="Trung tâm DVTH">Trung tâm DVTH</option>
+                                <option value="Công an phường">Công an phường</option>
+                                <option value="Ban CHQS">Ban CHQS</option>
+                                <option value="Trạm Y tế">Trạm Y tế</option>
+                                <option value="Văn phòng">Văn phòng</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Kết quả / Trạng thái:</label>
+                            <select id="filterStatus" class="form-select form-select-sm" onchange="applyFilters()">
+                                <option value="ALL">-- Tất cả trạng thái --</option>
+                                <option value="Hoàn thành trước hạn">Hoàn thành trước hạn</option>
+                                <option value="Hoàn thành đúng hạn">Hoàn thành đúng hạn</option>
+                                <option value="Đang xử lý">Đang xử lý</option>
+                                <option value="Quá hạn (Chưa xong)">Quá hạn (Chưa xong)</option>
+                                <option value="Quá hạn (Đã xong)">Quá hạn (Đã xong)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Chuyên viên tham mưu:</label>
+                            <select id="filterExpert" class="form-select form-select-sm" onchange="applyFilters()">
+                                <option value="ALL">-- Tất cả chuyên viên --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bảng Danh Sách Nhiệm Vụ -->
+        <div class="table-responsive">
+            <table class="table table-hover table-bordered align-middle" id="docTable">
+                <thead class="table-primary text-nowrap">
+                    <tr>
+                        <th>Số VB</th>
+                        <th>Ngày đến</th>
+                        <th>Đơn vị BH</th>
+                        <th>Trích yếu nội dung</th>
+                        <th>Ngày hết hạn</th>
+                        <th>Đơn vị xử lý</th>
+                        <th>CV Tham mưu</th>
+                        <th>Kết quả xử lý</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="10" class="text-center text-muted py-4"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải dữ liệu từ Google Sheets...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal Đăng nhập -->
+    <div class="modal fade" id="loginModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-lock me-2"></i>Đăng Nhập Hệ Thống</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tài khoản</label>
+                            <input type="text" id="loginUser" class="form-control" required placeholder="Nhập tài khoản">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Mật khẩu</label>
+                            <input type="password" id="loginPass" class="form-control" required placeholder="Nhập mật khẩu">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold">Đăng nhập</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Thêm Nhiệm Vụ Mới -->
+    <div class="modal fade" id="addDocModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-plus-circle me-2"></i>Thêm Mới Nhiệm Vụ Quản Lý Văn Bản</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addDocForm">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Số Văn bản</label>
+                                <input type="text" id="addSoVB" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Ngày đến</label>
+                                <input type="date" id="addNgayDen" class="form-control" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Ngày hết hạn</label>
+                                <input type="date" id="addNgayHetHan" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Đơn vị ban hành</label>
+                                <input type="text" id="addDonViBanHanh" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Đơn vị xử lý (Phòng ban)</label>
+                                <select id="addDonViXuLy" class="form-select" required onchange="updateExpertDropdownByDept('addDonViXuLy', 'addChuyenVienThamMuu')">
+                                    <option value="">-- Chọn đơn vị --</option>
+                                    <option value="Phòng KTHT&ĐT">Phòng KTHT&ĐT</option>
+                                    <option value="Phòng VH-XH">Phòng VH-XH</option>
+                                    <option value="Trung tâm PVHCC">Trung tâm PVHCC</option>
+                                    <option value="Trung tâm DVTH">Trung tâm DVTH</option>
+                                    <option value="Công an phường">Công an phường</option>
+                                    <option value="Ban CHQS">Ban CHQS</option>
+                                    <option value="Trạm Y tế">Trạm Y tế</option>
+                                    <option value="Văn phòng">Văn phòng</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">Chuyên viên tham mưu (Nếu có)</label>
+                                <select id="addChuyenVienThamMuu" class="form-select">
+                                    <option value="">-- Chọn Chuyên viên --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">Trích yếu nội dung</label>
+                                <textarea id="addTrichYeu" class="form-control" rows="3" required></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 fw-bold mt-3">Lưu Nhiệm Vụ</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cập Nhật Tiến Độ & Kết Quả Xử Lý -->
+    <div class="modal fade" id="updateModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square me-2"></i>Cập Nhật Kết Quả Xử Lý</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="updateForm">
+                        <input type="hidden" id="updateId">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Số Văn bản:</label>
+                            <span id="updateSoVBText" class="text-primary fw-bold"></span>
+                        </div>
+                        <div class="mb-3 d-none" id="adminExpertBox">
+                            <label class="form-label fw-bold">Phân công/Sửa Chuyên viên tham mưu:</label>
+                            <select id="updateChuyenVienThamMuu" class="form-select">
+                                <option value="">-- Chọn Chuyên viên --</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nội dung kết quả xử lý:</label>
+                            <textarea id="updateKetQua" class="form-control" rows="3" placeholder="Nhập tóm tắt kết quả..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Ngày hoàn thành thực tế (dd/mm/yyyy):</label>
+                            <input type="date" id="updateNgayThucTe" class="form-control">
+                            <small class="text-muted">Lưu ý: Bắt buộc chọn ngày xử lý thực tế để làm căn cứ tính hạn.</small>
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100 fw-bold">Cập Nhật Tiến Độ</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript & Logic Kết Nối -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // DÁN URL WEB APP APPS SCRIPT CỦA BẠN VÀO ĐÂY:
+        const API_URL = "https://script.google.com/macros/s/AKfycbw3iMF6OyD7di7M_HqZTde8Aw3q9W3DAJz5sitCxFksyCUtACxpYrZ12Bi3zqkowvs/exec";
+
+        let rawData = [];
+        let expertList = [];
+        let currentUser = null;
+        let chartInstance = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            loadData();
+            checkSession();
+        });
+
+        // Tải dữ liệu từ Google Sheets API
+        function loadData() {
+            fetch(`${API_URL}?action=getData`)
+                .then(res => res.json())
+                .then(data => {
+                    rawData = data.documents || [];
+                    expertList = data.experts || [];
+                    populateExpertDropdowns();
+                    applyFilters();
+                })
+                .catch(err => console.error("Lỗi kết nối API:", err));
+        }
+
+        // Đổ danh sách Chuyên viên vào các Dropdown
+        function populateExpertDropdowns() {
+            const filterSelect = document.getElementById("filterExpert");
+            filterSelect.innerHTML = '<option value="ALL">-- Tất cả chuyên viên --</option>';
+            expertList.forEach(exp => {
+                filterSelect.innerHTML += `<option value="${exp.name}">${exp.name} (${exp.dept})</option>`;
+            });
+        }
+
+        function updateExpertDropdownByDept(deptSelectId, expertSelectId) {
+            const dept = document.getElementById(deptSelectId).value;
+            const expertSelect = document.getElementById(expertSelectId);
+            expertSelect.innerHTML = '<option value="">-- Chọn Chuyên viên --</option>';
+            expertList.filter(e => e.dept === dept).forEach(exp => {
+                expertSelect.innerHTML += `<option value="${exp.name}">${exp.name}</option>`;
+            });
+        }
+
+        // Lọc và render Bảng dữ liệu + Dashboard
+        function applyFilters() {
+            const selectedDept = document.getElementById("filterDept").value;
+            const selectedStatus = document.getElementById("filterStatus").value;
+            const selectedExpert = document.getElementById("filterExpert").value;
+
+            let filtered = rawData.filter(item => {
+                let matchDept = (selectedDept === "ALL") || (item["Đơn vị xử lý"] === selectedDept);
+                let matchStatus = (selectedStatus === "ALL") || (item["Ghi chú xử lý"] === selectedStatus);
+                let matchExpert = (selectedExpert === "ALL") || (item["Chuyên viên tham mưu"] === selectedExpert);
+                return matchDept && matchStatus && matchExpert;
+            });
+
+            renderTable(filtered);
+            updateDashboardCards(filtered);
+            renderChart(filtered);
+        }
+
+        // Render Bảng dữ liệu
+        function renderTable(data) {
+            const tbody = document.getElementById("tableBody");
+            tbody.innerHTML = "";
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">Không tìm thấy dữ liệu phù hợp!</td></tr>';
+                return;
+            }
+
+            data.forEach(item => {
+                let badgeClass = "bg-secondary";
+                let statusText = item["Ghi chú xử lý"] || "Đang xử lý";
+
+                if (statusText === "Hoàn thành trước hạn" || statusText === "Hoàn thành đúng hạn") badgeClass = "bg-success";
+                else if (statusText.includes("Quá hạn")) badgeClass = "bg-danger";
+                else if (statusText === "Đang xử lý") badgeClass = "bg-warning text-dark";
+
+                let canEdit = currentUser && (currentUser.role === "Admin" || currentUser.department === item["Đơn vị xử lý"]);
+                let editBtn = canEdit ? 
+                    `<button class="btn btn-sm btn-outline-warning" onclick="openUpdateModal('${item["ID_Văn Bản"]}')"><i class="fa-solid fa-pen"></i></button>` : '';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="fw-bold">${item["Số Văn bản"] || ""}</td>
+                        <td>${formatDateDisplay(item["Ngày đến"])}</td>
+                        <td>${item["Đơn vị ban hành"] || ""}</td>
+                        <td>${item["Trích yếu nội dung"] || ""}</td>
+                        <td>${formatDateDisplay(item["Ngày hết hạn"])}</td>
+                        <td><span class="badge bg-light text-dark border">${item["Đơn vị xử lý"] || ""}</span></td>
+                        <td>${item["Chuyên viên tham mưu"] || '<span class="text-muted">Chưa gán</span>'}</td>
+                        <td>${item["Kết quả xử lý"] || '<span class="text-muted">Chưa có</span>'}</td>
+                        <td><span class="badge ${badgeClass} badge-status">${statusText}</span></td>
+                        <td>${editBtn}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Cập nhật các con số Dashboard
+        function updateDashboardCards(data) {
+            document.getElementById("statTotal").innerText = data.length;
+            document.getElementById("statCompleted").innerText = data.filter(d => (d["Ghi chú xử lý"] || "").includes("Hoàn thành")).length;
+            document.getElementById("statProcessing").innerText = data.filter(d => (d["Ghi chú xử lý"] || "") === "Đang xử lý").length;
+            document.getElementById("statOverdue").innerText = data.filter(d => (d["Ghi chú xử lý"] || "").includes("Quá hạn")).length;
+        }
+
+        // Vẽ biểu đồ Chart.js
+        function renderChart(data) {
+            const ctx = document.getElementById("statusChart").getContext("2d");
+            
+            let completed = data.filter(d => (d["Ghi chú xử lý"] || "").includes("Hoàn thành")).length;
+            let processing = data.filter(d => (d["Ghi chú xử lý"] || "") === "Đang xử lý").length;
+            let overdue = data.filter(d => (d["Ghi chú xử lý"] || "").includes("Quá hạn")).length;
+
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Hoàn thành', 'Đang xử lý', 'Quá hạn'],
+                    datasets: [{
+                        data: [completed, processing, overdue],
+                        backgroundColor: ['#198754', '#ffc107', '#dc3545']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // Xử lý Đăng Nhập
+        document.getElementById("loginForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            let u = document.getElementById("loginUser").value;
+            let p = document.getElementById("loginPass").value;
+
+            fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify({ action: "login", username: u, password: p })
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === "success") {
+                    currentUser = res.user;
+                    localStorage.setItem("qlvb_user", JSON.stringify(currentUser));
+                    updateUIByRole();
+                    bootstrap.Modal.getInstance(document.getElementById("loginModal")).hide();
+                    alert("Đăng nhập thành công!");
+                } else {
+                    alert(res.message);
+                }
+            });
+        });
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem("qlvb_user");
+            updateUIByRole();
+            applyFilters();
+        }
+
+        function checkSession() {
+            let saved = localStorage.getItem("qlvb_user");
+            if (saved) {
+                currentUser = JSON.parse(saved);
+                updateUIByRole();
+            }
+        }
+
+        function updateUIByRole() {
+            if (currentUser) {
+                document.getElementById("btnLoginModal").classList.add("d-none");
+                document.getElementById("btnLogout").classList.remove("d-none");
+                document.getElementById("userInfo").classList.remove("d-none");
+                document.getElementById("userDisplayName").innerText = currentUser.fullName;
+                document.getElementById("userDeptDisplay").innerText = currentUser.department;
+
+                if (currentUser.role === "Admin" || currentUser.role === "VP_NhapLieu") {
+                    document.getElementById("btnAddNew").classList.remove("d-none");
+                } else {
+                    document.getElementById("btnAddNew").classList.add("d-none");
+                }
+            } else {
+                document.getElementById("btnLoginModal").classList.remove("d-none");
+                document.getElementById("btnLogout").classList.add("d-none");
+                document.getElementById("userInfo").classList.add("d-none");
+                document.getElementById("btnAddNew").classList.add("d-none");
+            }
+        }
+
+        // Thêm Mới Nhiệm Vụ
+        document.getElementById("addDocForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            let payload = {
+                action: "addDocument",
+                role: currentUser.role,
+                createdUser: currentUser.fullName,
+                soVB: document.getElementById("addSoVB").value,
+                ngayDen: document.getElementById("addNgayDen").value,
+                ngayHetHan: document.getElementById("addNgayHetHan").value,
+                donViBanHanh: document.getElementById("addDonViBanHanh").value,
+                donViXuLy: document.getElementById("addDonViXuLy").value,
+                chuyenVienThamMuu: document.getElementById("addChuyenVienThamMuu").value,
+                trichYeu: document.getElementById("addTrichYeu").value
+            };
+
+            fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
+            .then(res => res.json())
+            .then(res => {
+                alert(res.message);
+                if(res.status === "success") {
+                    bootstrap.Modal.getInstance(document.getElementById("addDocModal")).hide();
+                    loadData();
+                }
+            });
+        });
+
+        // Mở Modal Cập nhật
+        function openUpdateModal(id) {
+            let item = rawData.find(d => d["ID_Văn Bản"] === id);
+            if (!item) return;
+
+            document.getElementById("updateId").value = id;
+            document.getElementById("updateSoVBText").innerText = item["Số Văn bản"];
+            document.getElementById("updateKetQua").value = item["Kết quả xử lý"] || "";
+            document.getElementById("updateNgayThucTe").value = item["Ngày xử lý thực tế"] || "";
+
+            if (currentUser && currentUser.role === "Admin") {
+                document.getElementById("adminExpertBox").classList.remove("d-none");
+                updateExpertDropdownByDept("filterDept", "updateChuyenVienThamMuu");
+            } else {
+                document.getElementById("adminExpertBox").classList.add("d-none");
+            }
+
+            new bootstrap.Modal(document.getElementById("updateModal")).show();
+        }
+
+        // Cập nhật kết quả
+        document.getElementById("updateForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+            let payload = {
+                action: "updateResult",
+                id: document.getElementById("updateId").value,
+                ketQuaXuLy: document.getElementById("updateKetQua").value,
+                ngayXuLyThucTe: document.getElementById("updateNgayThucTe").value,
+                chuyenVienThamMuu: document.getElementById("updateChuyenVienThamMuu") ? document.getElementById("updateChuyenVienThamMuu").value : undefined
+            };
+
+            fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
+            .then(res => res.json())
+            .then(res => {
+                alert(res.message);
+                if(res.status === "success") {
+                    bootstrap.Modal.getInstance(document.getElementById("updateModal")).hide();
+                    loadData();
+                }
+            });
+        });
+
+        function formatDateDisplay(dateStr) {
+            if (!dateStr) return "";
+            if (dateStr.includes("T")) dateStr = dateStr.split("T")[0];
+            let parts = dateStr.split("-");
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return dateStr;
+        }
+    </script>
+</body>
+</html>
