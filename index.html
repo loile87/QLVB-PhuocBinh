@@ -3,573 +3,537 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Theo Dõi Nhiệm Vụ QLVB Hằng Ngày</title>
-    <!-- Bootstrap 5 CSS & FontAwesome Icons -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js -->
+    <title>Dashboard Giám Sát Tiến Độ Tác Nhiệm Văn Bản - Windows 11 Fluent Design</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js & DataLabels Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <!-- SheetJS cho Xuất Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- Custom CSS Phong cách Windows 11 Fluent / Mica Design -->
     <style>
-        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .navbar-brand { font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
-        .card-stat { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.2s; }
-        .card-stat:hover { transform: translateY(-3px); }
-        .bg-gradient-primary { background: linear-gradient(45deg, #0d6efd, #0dcaf0); color: white; }
-        .bg-gradient-success { background: linear-gradient(45deg, #198754, #20c997); color: white; }
-        .bg-gradient-danger { background: linear-gradient(45deg, #dc3545, #ff4d5a); color: white; }
-        .bg-gradient-warning { background: linear-gradient(45deg, #ffc107, #ffca2c); color: #212529; }
-        .table-responsive { background: white; border-radius: 10px; padding: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .badge-status { font-size: 0.85rem; padding: 6px 12px; border-radius: 20px; }
-        .filter-box { background: white; border-radius: 10px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
+        @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            background: linear-gradient(135deg, #eef2f7 0%, #e3e8f0 100%);
+            min-height: 100vh;
+        }
+
+        /* Thẻ Kính Mờ Win11 (Glassmorphism / Mica Effect) */
+        .win11-card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+            transition: all 0.25s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+
+        .win11-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Nút bấm chuẩn Windows 11 */
+        .win11-btn {
+            border-radius: 8px;
+            transition: all 0.15s ease-in-out;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .win11-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* Badges trạng thái */
+        .badge-status {
+            padding: 0.3rem 0.65rem;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            display: inline-block;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+        .badge-ontime { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .badge-late { background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+        .badge-pending { background: #fef9c3; color: #a16207; border: 1px solid #fef08a; }
+        .badge-overdue { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+        /* Custom Scrollbar mềm mại */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body>
+<body class="p-4 md:p-6 text-slate-800">
 
-    <!-- Header Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#"><i class="fa-solid fa-list-check me-2"></i>Hệ Thống Theo Dõi Nhiệm Vụ QLVB</a>
-            <div class="d-flex align-items-center">
-                <div id="userInfo" class="text-white me-3 d-none">
-                    <i class="fa-solid fa-user-circle me-1"></i> <span id="userDisplayName"></span> (<span id="userDeptDisplay"></span>)
-                </div>
-                <button id="btnLoginModal" class="btn btn-light btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#loginModal">
-                    <i class="fa-solid fa-right-to-bracket me-1"></i> Đăng nhập
-                </button>
-                <button id="btnLogout" class="btn btn-outline-light btn-sm fw-bold d-none" onclick="logout()">
-                    <i class="fa-solid fa-right-from-bracket me-1"></i> Đăng xuất
-                </button>
+    <!-- HEADER WIN11 -->
+    <header class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center win11-card p-5 gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+                📊
             </div>
-        </div>
-    </nav>
-
-    <div class="container-fluid py-4">
-        
-        <!-- Action Toolbar -->
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="fw-bold text-secondary mb-0"><i class="fa-solid fa-chart-pie me-2"></i>Dashboard & Báo Cáo Tiến Độ</h4>
             <div>
-                <button id="btnAddNew" class="btn btn-success d-none shadow-sm" data-bs-toggle="modal" data-bs-target="#addDocModal">
-                    <i class="fa-solid fa-plus me-1"></i> Thêm nhiệm vụ mới
+                <h1 class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">HỆ THỐNG THEO DÕI NHIỆM VỤ XỬ LÝ VĂN BẢN TRÊN DNIS</h1>
+                <p class="text-xs md:text-sm text-slate-500 font-medium">Cập nhật tự động thời gian thực từ Google Drive</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 bg-white/80 px-4 py-2 rounded-xl border border-slate-200/80 shadow-inner">
+            <span class="inline-block w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
+            <span class="text-xs md:text-sm text-slate-600 font-medium">Đồng bộ: <strong id="last-update" class="text-blue-600">Đang tải...</strong></span>
+        </div>
+    </header>
+
+    <!-- THẺ KPIs CẢI TIẾN THIẾT KẾ WIN11 -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div class="win11-card p-4 border-l-4 border-l-blue-500 cursor-pointer" onclick="resetFilter()">
+            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Tổng số văn bản</p>
+            <h3 class="text-3xl font-bold text-slate-800 mt-1" id="kpi-total">0</h3>
+        </div>
+        <div class="win11-card p-4 border-l-4 border-l-emerald-500 cursor-pointer" onclick="filterByStatus('HT đúng hạn')">
+            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Hoàn thành đúng hạn</p>
+            <h3 class="text-3xl font-bold text-emerald-600 mt-1" id="kpi-completed-ontime">0</h3>
+        </div>
+        <div class="win11-card p-4 border-l-4 border-l-purple-500 cursor-pointer" onclick="filterByStatus('HT quá hạn')">
+            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Hoàn thành quá hạn</p>
+            <h3 class="text-3xl font-bold text-purple-600 mt-1" id="kpi-completed-late">0</h3>
+        </div>
+        <div class="win11-card p-4 border-l-4 border-l-amber-500 cursor-pointer" onclick="filterByStatus('Đang xử lý')">
+            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Đang xử lý (Trong hạn)</p>
+            <h3 class="text-3xl font-bold text-amber-600 mt-1" id="kpi-pending">0</h3>
+        </div>
+        <div class="win11-card p-4 border-l-4 border-l-rose-500 cursor-pointer" onclick="filterByStatus('Quá hạn chưa xong')">
+            <p class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Quá hạn chưa thực hiện</p>
+            <h3 class="text-3xl font-bold text-rose-600 mt-1" id="kpi-overdue-notdone">0</h3>
+        </div>
+    </div>
+
+    <!-- KHỐI 3 BIỂU ĐỒ BÓNG BẨY -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <!-- Biểu đồ 1: UBND Tỉnh / TP -->
+        <div class="win11-card p-5">
+            <h2 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <span class="w-2 h-4 bg-blue-600 rounded-full"></span> 1. Nhiệm vụ từ UBND Tỉnh / Thành phố
+            </h2>
+            <div class="relative h-64 flex justify-center">
+                <canvas id="ubndProvinceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Biểu đồ 2: Đảng ủy / UBND Phường -->
+        <div class="win11-card p-5">
+            <h2 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <span class="w-2 h-4 bg-purple-600 rounded-full"></span> 2. Nhiệm vụ từ Đảng ủy / UBND Phường
+            </h2>
+            <div class="relative h-64 flex justify-center">
+                <canvas id="wardPartyGovChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Biểu đồ 3: Chọn Phòng Ban Độc Lập -->
+        <div class="win11-card p-5">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <span class="w-2 h-4 bg-emerald-600 rounded-full"></span> 3. Thống kê theo Phòng Ban
+                </h2>
+                <select id="unitSelect" onchange="onUnitSelectChange()" class="text-xs bg-white/90 border border-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm font-medium">
+                    <option value="ALL">Tất cả các phòng ban</option>
+                </select>
+            </div>
+            <div class="relative h-64 flex justify-center">
+                <canvas id="unitDetailedChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- KHỐI DANH SÁCH CHI TIẾT TÁC NHIỆM -->
+    <div class="win11-card p-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-4 border-b border-slate-200/80 pb-4">
+            <div>
+                <h2 class="text-base font-bold text-rose-700 flex items-center gap-2" id="table-title">
+                    <span>📌</span> Danh sách Nhiệm vụ Quá hạn Chưa Thực hiện
+                </h2>
+                <p class="text-xs text-slate-500 font-medium mt-0.5" id="table-subtitle">Chỉ danh sách các văn bản đã quá thời gian xử lý nhưng chưa có kết quả hoàn thành</p>
+            </div>
+
+            <!-- CỤM NÚT THAO TÁC (TÌM KIẾM, XUẤT EXCEL) -->
+            <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+                <input type="text" id="searchInput" onkeyup="filterTableByKeyword()" placeholder="Tìm Số VB, Trích yếu, Đơn vị..." 
+                       class="px-3.5 py-2 bg-white/90 border border-slate-300 rounded-lg text-sm w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-blue-500/80 shadow-sm font-medium">
+                
+                <button onclick="exportToExcel()" class="win11-btn bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+                    <span>📊</span> Xuất Excel
                 </button>
-                <button class="btn btn-outline-secondary shadow-sm" onclick="loadData()">
-                    <i class="fa-solid fa-rotate me-1"></i> Tải lại dữ liệu
+                <button onclick="resetFilter()" class="win11-btn bg-slate-200 hover:bg-slate-300 text-slate-700 px-3.5 py-2 text-xs font-semibold">
+                    <span>🔄</span> Tất cả
                 </button>
             </div>
         </div>
 
-        <!-- Thống kê Card Dashboard -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="card card-stat bg-gradient-primary p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase mb-1">Tổng số nhiệm vụ</h6>
-                            <h2 class="fw-bold mb-0" id="statTotal">0</h2>
-                        </div>
-                        <i class="fa-solid fa-folder-open fa-2x opacity-75"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card card-stat bg-gradient-success p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase mb-1">Hoàn thành (Đúng/Trước hạn)</h6>
-                            <h2 class="fw-bold mb-0" id="statCompleted">0</h2>
-                        </div>
-                        <i class="fa-solid fa-circle-check fa-2x opacity-75"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card card-stat bg-gradient-warning p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase mb-1">Đang xử lý</h6>
-                            <h2 class="fw-bold mb-0" id="statProcessing">0</h2>
-                        </div>
-                        <i class="fa-solid fa-clock-rotate-left fa-2x opacity-75"></i>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card card-stat bg-gradient-danger p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="text-uppercase mb-1">Quá hạn xử lý</h6>
-                            <h2 class="fw-bold mb-0" id="statOverdue">0</h2>
-                        </div>
-                        <i class="fa-solid fa-triangle-exclamation fa-2x opacity-75"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Biểu đồ & Bộ Lọc -->
-        <div class="row mb-4">
-            <div class="col-md-4">
-                <div class="card p-3 shadow-sm h-100">
-                    <h6 class="fw-bold text-center text-muted mb-3">Tỷ lệ Trạng thái Xử lý</h6>
-                    <div style="height: 230px;"><canvas id="statusChart"></canvas></div>
-                </div>
-            </div>
-            <div class="col-md-8">
-                <div class="filter-box h-100 d-flex flex-column justify-content-center">
-                    <h6 class="fw-bold text-secondary mb-3"><i class="fa-solid fa-filter me-1"></i>Bộ Lọc Tìm Kiếm Nhiệm Vụ</h6>
-                    <div class="row g-2">
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold">Phòng ban/Đơn vị:</label>
-                            <select id="filterDept" class="form-select form-select-sm" onchange="applyFilters()">
-                                <option value="ALL">-- Tất cả phòng ban --</option>
-                                <option value="Phòng KTHT&ĐT">Phòng KTHT&ĐT</option>
-                                <option value="Phòng VH-XH">Phòng VH-XH</option>
-                                <option value="Trung tâm PVHCC">Trung tâm PVHCC</option>
-                                <option value="Trung tâm DVTH">Trung tâm DVTH</option>
-                                <option value="Công an phường">Công an phường</option>
-                                <option value="Ban CHQS">Ban CHQS</option>
-                                <option value="Trạm Y tế">Trạm Y tế</option>
-                                <option value="Văn phòng">Văn phòng</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold">Kết quả / Trạng thái:</label>
-                            <select id="filterStatus" class="form-select form-select-sm" onchange="applyFilters()">
-                                <option value="ALL">-- Tất cả trạng thái --</option>
-                                <option value="Hoàn thành trước hạn">Hoàn thành trước hạn</option>
-                                <option value="Hoàn thành đúng hạn">Hoàn thành đúng hạn</option>
-                                <option value="Đang xử lý">Đang xử lý</option>
-                                <option value="Quá hạn (Chưa xong)">Quá hạn (Chưa xong)</option>
-                                <option value="Quá hạn (Đã xong)">Quá hạn (Đã xong)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold">Chuyên viên tham mưu:</label>
-                            <select id="filterExpert" class="form-select form-select-sm" onchange="applyFilters()">
-                                <option value="ALL">-- Tất cả chuyên viên --</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Bảng Danh Sách Nhiệm Vụ -->
-        <div class="table-responsive">
-            <table class="table table-hover table-bordered align-middle" id="docTable">
-                <thead class="table-primary text-nowrap">
-                    <tr>
-                        <th>Số VB</th>
-                        <th>Ngày đến</th>
-                        <th>Đơn vị BH</th>
-                        <th>Trích yếu nội dung</th>
-                        <th>Ngày hết hạn</th>
-                        <th>Đơn vị xử lý</th>
-                        <th>CV Tham mưu</th>
-                        <th>Kết quả xử lý</th>
-                        <th>Trạng thái</th>
-                        <th>Thao tác</th>
+        <!-- BẢNG DỮ LIỆU CẮT BỎ CÁC CỘT RÁC -->
+        <div class="overflow-x-auto rounded-xl border border-slate-200/80 shadow-inner bg-white/50">
+            <table id="mainTable" class="w-full text-left text-xs md:text-sm border-collapse">
+                <thead>
+                    <tr class="bg-slate-100/80 text-slate-700 uppercase font-bold text-xs border-b border-slate-200">
+                        <th class="p-3 border-r text-center whitespace-nowrap">STT</th>
+                        <th class="p-3 border-r whitespace-nowrap">Số Văn bản</th>
+                        <th class="p-3 border-r whitespace-nowrap">Ngày đến</th>
+                        <th class="p-3 border-r whitespace-nowrap">Đơn vị ban hành</th>
+                        <th class="p-3 border-r w-1/4">Trích yếu nội dung</th>
+                        <th class="p-3 border-r whitespace-nowrap">Ngày hết hạn</th>
+                        <th class="p-3 border-r whitespace-nowrap">Đơn vị xử lý</th>
+                        <th class="p-3 border-r w-1/5">Nội dung xử lý</th>
+                        <th class="p-3 text-center whitespace-nowrap">Thời gian, kết quả xử lý</th>
                     </tr>
                 </thead>
-                <tbody id="tableBody">
-                    <tr><td colspan="10" class="text-center text-muted py-4"><i class="fa-solid fa-spinner fa-spin me-2"></i>Đang tải dữ liệu từ Google Sheets...</td></tr>
+                <tbody id="dataTableBody" class="divide-y divide-slate-200/80 bg-white/60">
+                    <tr>
+                        <td colspan="9" class="text-center py-8 text-slate-400 font-medium">Đang đồng bộ dữ liệu hệ thống...</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Modal Đăng nhập -->
-    <div class="modal fade" id="loginModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-lock me-2"></i>Đăng Nhập Hệ Thống</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="loginForm">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Tài khoản</label>
-                            <input type="text" id="loginUser" class="form-control" required placeholder="Nhập tài khoản">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Mật khẩu</label>
-                            <input type="password" id="loginPass" class="form-control" required placeholder="Nhập mật khẩu">
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100 fw-bold">Đăng nhập</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Thêm Nhiệm Vụ Mới -->
-    <div class="modal fade" id="addDocModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-plus-circle me-2"></i>Thêm Mới Nhiệm Vụ Quản Lý Văn Bản</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="addDocForm">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Số Văn bản</label>
-                                <input type="text" id="addSoVB" class="form-control" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Ngày đến</label>
-                                <input type="date" id="addNgayDen" class="form-control" required>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold">Ngày hết hạn</label>
-                                <input type="date" id="addNgayHetHan" class="form-control" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Đơn vị ban hành</label>
-                                <input type="text" id="addDonViBanHanh" class="form-control" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Đơn vị xử lý (Phòng ban)</label>
-                                <select id="addDonViXuLy" class="form-select" required onchange="updateExpertDropdownByDept('addDonViXuLy', 'addChuyenVienThamMuu')">
-                                    <option value="">-- Chọn đơn vị --</option>
-                                    <option value="Phòng KTHT&ĐT">Phòng KTHT&ĐT</option>
-                                    <option value="Phòng VH-XH">Phòng VH-XH</option>
-                                    <option value="Trung tâm PVHCC">Trung tâm PVHCC</option>
-                                    <option value="Trung tâm DVTH">Trung tâm DVTH</option>
-                                    <option value="Công an phường">Công an phường</option>
-                                    <option value="Ban CHQS">Ban CHQS</option>
-                                    <option value="Trạm Y tế">Trạm Y tế</option>
-                                    <option value="Văn phòng">Văn phòng</option>
-                                </select>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-label fw-bold">Chuyên viên tham mưu (Nếu có)</label>
-                                <select id="addChuyenVienThamMuu" class="form-select">
-                                    <option value="">-- Chọn Chuyên viên --</option>
-                                </select>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-label fw-bold">Trích yếu nội dung</label>
-                                <textarea id="addTrichYeu" class="form-control" rows="3" required></textarea>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-success w-100 fw-bold mt-3">Lưu Nhiệm Vụ</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Cập Nhật Tiến Độ & Kết Quả Xử Lý -->
-    <div class="modal fade" id="updateModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-warning text-dark">
-                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-pen-to-square me-2"></i>Cập Nhật Kết Quả Xử Lý</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="updateForm">
-                        <input type="hidden" id="updateId">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Số Văn bản:</label>
-                            <span id="updateSoVBText" class="text-primary fw-bold"></span>
-                        </div>
-                        <div class="mb-3 d-none" id="adminExpertBox">
-                            <label class="form-label fw-bold">Phân công/Sửa Chuyên viên tham mưu:</label>
-                            <select id="updateChuyenVienThamMuu" class="form-select">
-                                <option value="">-- Chọn Chuyên viên --</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Nội dung kết quả xử lý:</label>
-                            <textarea id="updateKetQua" class="form-control" rows="3" placeholder="Nhập tóm tắt kết quả..."></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Ngày hoàn thành thực tế (dd/mm/yyyy):</label>
-                            <input type="date" id="updateNgayThucTe" class="form-control">
-                            <small class="text-muted">Lưu ý: Bắt buộc chọn ngày xử lý thực tế để làm căn cứ tính hạn.</small>
-                        </div>
-                        <button type="submit" class="btn btn-warning w-100 fw-bold">Cập Nhật Tiến Độ</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- JavaScript & Logic Kết Nối -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- JAVASCRIPT XỬ LÝ -->
     <script>
-        // DÁN URL WEB APP APPS SCRIPT CỦA BẠN VÀO ĐÂY:
-        const API_URL = "https://script.google.com/macros/s/AKfycbw3iMF6OyD7di7M_HqZTde8Aw3q9W3DAJz5sitCxFksyCUtACxpYrZ12Bi3zqkowvs/exec";
+        Chart.register(ChartDataLabels);
 
-        let rawData = [];
-        let expertList = [];
-        let currentUser = null;
-        let chartInstance = null;
+        // =========================================================================
+        // THAY URL CỦA APPS SCRIPT VÀO DƯỚI ĐÂY:
+        // =========================================================================
+        const API_URL = "https://script.google.com/macros/s/AKfycbw9Bpp6lWiRnhYgh5frmWbQXKDf7JEgzKZJa1GSJK_VjXhSyaAiFwri7pvkBzKDK6g/exec"; 
 
-        document.addEventListener("DOMContentLoaded", () => {
-            loadData();
-            checkSession();
-        });
+        let globalAllData = [];
+        let currentFilteredData = [];
+        let globalUnitStats = {};
 
-        // Tải dữ liệu từ Google Sheets API
-        function loadData() {
-            fetch(`${API_URL}?action=getData`)
-                .then(res => res.json())
-                .then(data => {
-                    rawData = data.documents || [];
-                    expertList = data.experts || [];
-                    populateExpertDropdowns();
-                    applyFilters();
-                })
-                .catch(err => console.error("Lỗi kết nối API:", err));
+        let chart1Instance = null;
+        let chart2Instance = null;
+        let chart3Instance = null;
+
+        async function fetchDashboardData() {
+            try {
+                document.getElementById('last-update').innerText = "Đang đồng bộ...";
+                const response = await fetch(API_URL);
+                const result = await response.json();
+
+                if (result.status === "success") {
+                    globalAllData = result.allData;
+                    globalUnitStats = result.charts.unitDetailedStats;
+
+                    // Update KPIs
+                    document.getElementById('kpi-total').innerText = result.kpis.total;
+                    document.getElementById('kpi-completed-ontime').innerText = result.kpis.completedOnTime;
+                    document.getElementById('kpi-completed-late').innerText = result.kpis.completedLate;
+                    document.getElementById('kpi-pending').innerText = result.kpis.pending;
+                    document.getElementById('kpi-overdue-notdone').innerText = result.kpis.overdueNotDone;
+
+                    const now = new Date();
+                    document.getElementById('last-update').innerText = now.toLocaleTimeString('vi-VN') + " - " + now.toLocaleDateString('vi-VN');
+
+                    // Nạp danh sách đơn vị vào Dropdown
+                    populateUnitDropdown(Object.keys(result.charts.unitDetailedStats));
+
+                    // Render Charts
+                    renderCharts(result.charts);
+
+                    // Mặc định hiển thị danh sách Quá hạn chưa thực hiện
+                    filterByStatus('Quá hạn chưa xong');
+                }
+            } catch (error) {
+                console.error("Lỗi API:", error);
+                document.getElementById('last-update').innerText = "Lỗi kết nối!";
+            }
         }
 
-        // Đổ danh sách Chuyên viên vào các Dropdown
-        function populateExpertDropdowns() {
-            const filterSelect = document.getElementById("filterExpert");
-            filterSelect.innerHTML = '<option value="ALL">-- Tất cả chuyên viên --</option>';
-            expertList.forEach(exp => {
-                filterSelect.innerHTML += `<option value="${exp.name}">${exp.name} (${exp.dept})</option>`;
+        function populateUnitDropdown(units) {
+            const select = document.getElementById('unitSelect');
+            select.innerHTML = '<option value="ALL">Tất cả các phòng ban</option>';
+            units.forEach(u => {
+                select.innerHTML += `<option value="${u}">${u}</option>`;
             });
         }
 
-        function updateExpertDropdownByDept(deptSelectId, expertSelectId) {
-            const dept = document.getElementById(deptSelectId).value;
-            const expertSelect = document.getElementById(expertSelectId);
-            expertSelect.innerHTML = '<option value="">-- Chọn Chuyên viên --</option>';
-            expertList.filter(e => e.dept === dept).forEach(exp => {
-                expertSelect.innerHTML += `<option value="${exp.name}">${exp.name}</option>`;
+        function renderCharts(chartsData) {
+            const colors = ['#22c55e', '#a855f7', '#eab308', '#ef4444'];
+            const labels = ['HT đúng hạn', 'HT quá hạn', 'Đang xử lý', 'Quá hạn chưa xong'];
+
+            // --- Biểu đồ 1: UBND Tỉnh / TP ---
+            const ctx1 = document.getElementById('ubndProvinceChart').getContext('2d');
+            if (chart1Instance) chart1Instance.destroy();
+            chart1Instance = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: labels.map(l => chartsData.ubndProvinceStats[l] || 0),
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            color: '#fff',
+                            font: { weight: 'bold', size: 11 },
+                            formatter: (value) => value > 0 ? value : ''
+                        }
+                    },
+                    onClick: (evt, activeElements) => {
+                        if (activeElements.length > 0) {
+                            const index = activeElements[0].index;
+                            filterByGroupAndStatus('ubndProvince', labels[index]);
+                        }
+                    }
+                }
             });
+
+            // --- Biểu đồ 2: Đảng ủy / UBND Phường ---
+            const ctx2 = document.getElementById('wardPartyGovChart').getContext('2d');
+            if (chart2Instance) chart2Instance.destroy();
+            chart2Instance = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: labels.map(l => chartsData.wardPartyGovStats[l] || 0),
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        datalabels: {
+                            color: '#fff',
+                            font: { weight: 'bold', size: 11 },
+                            formatter: (value) => value > 0 ? value : ''
+                        }
+                    },
+                    onClick: (evt, activeElements) => {
+                        if (activeElements.length > 0) {
+                            const index = activeElements[0].index;
+                            filterByGroupAndStatus('wardGov', labels[index]);
+                        }
+                    }
+                }
+            });
+
+            // --- Biểu đồ 3: Phòng ban ---
+            renderUnitChart("ALL");
         }
 
-        // Lọc và render Bảng dữ liệu + Dashboard
-        function applyFilters() {
-            const selectedDept = document.getElementById("filterDept").value;
-            const selectedStatus = document.getElementById("filterStatus").value;
-            const selectedExpert = document.getElementById("filterExpert").value;
+        function renderUnitChart(selectedUnit) {
+            const ctx3 = document.getElementById('unitDetailedChart').getContext('2d');
+            if (chart3Instance) chart3Instance.destroy();
 
-            let filtered = rawData.filter(item => {
-                let matchDept = (selectedDept === "ALL") || (item["Đơn vị xử lý"] === selectedDept);
-                let matchStatus = (selectedStatus === "ALL") || (item["Ghi chú xử lý"] === selectedStatus);
-                let matchExpert = (selectedExpert === "ALL") || (item["Chuyên viên tham mưu"] === selectedExpert);
-                return matchDept && matchStatus && matchExpert;
+            const colors = ['#22c55e', '#a855f7', '#eab308', '#ef4444'];
+            const labels = ['HT đúng hạn', 'HT quá hạn', 'Đang xử lý', 'Quá hạn chưa xong'];
+
+            if (selectedUnit === "ALL") {
+                const units = Object.keys(globalUnitStats);
+                chart3Instance = new Chart(ctx3, {
+                    type: 'bar',
+                    data: {
+                        labels: units,
+                        datasets: labels.map((label, i) => ({
+                            label: label,
+                            data: units.map(u => globalUnitStats[u][label] || 0),
+                            backgroundColor: colors[i],
+                            borderRadius: 4
+                        }))
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { x: { stacked: true }, y: { stacked: true } },
+                        plugins: {
+                            datalabels: {
+                                color: '#fff',
+                                font: { weight: 'bold', size: 10 },
+                                formatter: (val) => val > 0 ? val : ''
+                            }
+                        },
+                        onClick: (evt, activeElements) => {
+                            if (activeElements.length > 0) {
+                                const uIndex = activeElements[0].index;
+                                const selectedU = units[uIndex];
+                                filterByUnit(selectedU);
+                            }
+                        }
+                    }
+                });
+            } else {
+                const unitData = globalUnitStats[selectedUnit] || {};
+                chart3Instance = new Chart(ctx3, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: labels.map(l => unitData[l] || 0),
+                            backgroundColor: colors,
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            datalabels: {
+                                color: '#fff',
+                                font: { weight: 'bold', size: 11 },
+                                formatter: (value) => value > 0 ? value : ''
+                            }
+                        },
+                        onClick: (evt, activeElements) => {
+                            if (activeElements.length > 0) {
+                                const idx = activeElements[0].index;
+                                filterByUnitAndStatus(selectedUnit, labels[idx]);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function onUnitSelectChange() {
+            const selectedUnit = document.getElementById('unitSelect').value;
+            renderUnitChart(selectedUnit);
+            if (selectedUnit === "ALL") {
+                resetFilter();
+            } else {
+                filterByUnit(selectedUnit);
+            }
+        }
+
+        function filterByStatus(statusName) {
+            currentFilteredData = globalAllData.filter(d => d.statusCategory === statusName);
+            document.getElementById('table-title').innerHTML = `<span>📌</span> Danh sách Nhiệm vụ: ${statusName}`;
+            document.getElementById('table-subtitle').innerText = `Thống kê toàn bộ văn bản thuộc trạng thái: ${statusName}`;
+            renderTable(currentFilteredData);
+        }
+
+        function filterByGroupAndStatus(groupType, statusName) {
+            currentFilteredData = globalAllData.filter(d => {
+                let matchGroup = false;
+                if (groupType === 'ubndProvince') {
+                    matchGroup = d.isProvinceLevel;
+                } else if (groupType === 'wardGov') {
+                    matchGroup = d.isWardLevel;
+                }
+                return matchGroup && d.statusCategory === statusName;
             });
 
+            const groupLabel = groupType === 'ubndProvince' ? "UBND Tỉnh/Thành phố" : "Đảng ủy/UBND Phường";
+            document.getElementById('table-title').innerHTML = `<span>📌</span> Danh sách Nhiệm vụ từ ${groupLabel}: ${statusName}`;
+            document.getElementById('table-subtitle').innerText = `Dữ liệu lọc trực tiếp theo thống kê gần đúng từ biểu đồ`;
+            renderTable(currentFilteredData);
+        }
+
+        function filterByUnit(unitName) {
+            currentFilteredData = globalAllData.filter(d => d.handler === unitName);
+            document.getElementById('table-title').innerHTML = `<span>🏢</span> Danh sách Nhiệm vụ Đơn vị: ${unitName}`;
+            document.getElementById('table-subtitle').innerText = `Toàn bộ văn bản do ${unitName} chịu trách nhiệm xử lý`;
+            renderTable(currentFilteredData);
+        }
+
+        function filterByUnitAndStatus(unitName, statusName) {
+            currentFilteredData = globalAllData.filter(d => d.handler === unitName && d.statusCategory === statusName);
+            document.getElementById('table-title').innerHTML = `<span>🏢</span> Nhiệm vụ ${unitName}: ${statusName}`;
+            document.getElementById('table-subtitle').innerText = `Văn bản lọc theo đơn vị và trạng thái cụ thể`;
+            renderTable(currentFilteredData);
+        }
+
+        function resetFilter() {
+            currentFilteredData = [...globalAllData];
+            document.getElementById('table-title').innerHTML = `<span>📌</span> Danh sách Toàn bộ Nhiệm vụ Tác nhiệm`;
+            document.getElementById('table-subtitle').innerText = `Hiển thị tất cả văn bản có số hiệu hợp lệ trên hệ thống`;
+            document.getElementById('unitSelect').value = "ALL";
+            renderUnitChart("ALL");
+            renderTable(currentFilteredData);
+        }
+
+        function filterTableByKeyword() {
+            const kw = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = currentFilteredData.filter(d => 
+                d.docNo.toLowerCase().includes(kw) || 
+                d.summary.toLowerCase().includes(kw) || 
+                d.handler.toLowerCase().includes(kw)
+            );
             renderTable(filtered);
-            updateDashboardCards(filtered);
-            renderChart(filtered);
         }
 
-        // Render Bảng dữ liệu
-        function renderTable(data) {
-            const tbody = document.getElementById("tableBody");
-            tbody.innerHTML = "";
+        function renderTable(dataList) {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
 
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-muted">Không tìm thấy dữ liệu phù hợp!</td></tr>';
+            if (!dataList || dataList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-slate-400 font-medium">Không tìm thấy dữ liệu nhiệm vụ phù hợp.</td></tr>';
                 return;
             }
 
-            data.forEach(item => {
-                let badgeClass = "bg-secondary";
-                let statusText = item["Ghi chú xử lý"] || "Đang xử lý";
+            dataList.forEach((item, index) => {
+                let badgeClass = 'badge-pending';
+                if (item.statusCategory === 'HT đúng hạn') badgeClass = 'badge-ontime';
+                if (item.statusCategory === 'HT quá hạn') badgeClass = 'badge-late';
+                if (item.statusCategory === 'Quá hạn chưa xong') badgeClass = 'badge-overdue';
 
-                if (statusText === "Hoàn thành trước hạn" || statusText === "Hoàn thành đúng hạn") badgeClass = "bg-success";
-                else if (statusText.includes("Quá hạn")) badgeClass = "bg-danger";
-                else if (statusText === "Đang xử lý") badgeClass = "bg-warning text-dark";
-
-                let canEdit = currentUser && (currentUser.role === "Admin" || currentUser.department === item["Đơn vị xử lý"]);
-                let editBtn = canEdit ? 
-                    `<button class="btn btn-sm btn-outline-warning" onclick="openUpdateModal('${item["ID_Văn Bản"]}')"><i class="fa-solid fa-pen"></i></button>` : '';
-
-                tbody.innerHTML += `
-                    <tr>
-                        <td class="fw-bold">${item["Số Văn bản"] || ""}</td>
-                        <td>${formatDateDisplay(item["Ngày đến"])}</td>
-                        <td>${item["Đơn vị ban hành"] || ""}</td>
-                        <td>${item["Trích yếu nội dung"] || ""}</td>
-                        <td>${formatDateDisplay(item["Ngày hết hạn"])}</td>
-                        <td><span class="badge bg-light text-dark border">${item["Đơn vị xử lý"] || ""}</span></td>
-                        <td>${item["Chuyên viên tham mưu"] || '<span class="text-muted">Chưa gán</span>'}</td>
-                        <td>${item["Kết quả xử lý"] || '<span class="text-muted">Chưa có</span>'}</td>
-                        <td><span class="badge ${badgeClass} badge-status">${statusText}</span></td>
-                        <td>${editBtn}</td>
-                    </tr>
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-blue-50/50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-3 border-r text-center font-bold text-slate-500">${index + 1}</td>
+                    <td class="p-3 border-r font-semibold text-blue-900 whitespace-nowrap">${item.docNo}</td>
+                    <td class="p-3 border-r text-slate-600 whitespace-nowrap">${item.arriveDate || '-'}</td>
+                    <td class="p-3 border-r text-slate-800 whitespace-nowrap font-medium">${item.issuer || '-'}</td>
+                    <td class="p-3 border-r text-slate-700 leading-relaxed">${item.summary || '-'}</td>
+                    <td class="p-3 border-r text-slate-600 whitespace-nowrap">${item.dueDate || '-'}</td>
+                    <td class="p-3 border-r font-semibold text-slate-800 whitespace-nowrap">${item.handler || '-'}</td>
+                    <td class="p-3 border-r text-slate-600 leading-relaxed">${item.processTask || '-'}</td>
+                    <td class="p-3 text-center whitespace-nowrap"><span class="badge-status ${badgeClass}">${item.statusText || item.statusCategory}</span></td>
                 `;
+                tbody.appendChild(tr);
             });
         }
 
-        // Cập nhật các con số Dashboard
-        function updateDashboardCards(data) {
-            document.getElementById("statTotal").innerText = data.length;
-            document.getElementById("statCompleted").innerText = data.filter(d => (d["Ghi chú xử lý"] || "").includes("Hoàn thành")).length;
-            document.getElementById("statProcessing").innerText = data.filter(d => (d["Ghi chú xử lý"] || "") === "Đang xử lý").length;
-            document.getElementById("statOverdue").innerText = data.filter(d => (d["Ghi chú xử lý"] || "").includes("Quá hạn")).length;
-        }
-
-        // Vẽ biểu đồ Chart.js
-        function renderChart(data) {
-            const ctx = document.getElementById("statusChart").getContext("2d");
-            
-            let completed = data.filter(d => (d["Ghi chú xử lý"] || "").includes("Hoàn thành")).length;
-            let processing = data.filter(d => (d["Ghi chú xử lý"] || "") === "Đang xử lý").length;
-            let overdue = data.filter(d => (d["Ghi chú xử lý"] || "").includes("Quá hạn")).length;
-
-            if (chartInstance) chartInstance.destroy();
-
-            chartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Hoàn thành', 'Đang xử lý', 'Quá hạn'],
-                    datasets: [{
-                        data: [completed, processing, overdue],
-                        backgroundColor: ['#198754', '#ffc107', '#dc3545']
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
-
-        // Xử lý Đăng Nhập
-        document.getElementById("loginForm").addEventListener("submit", (e) => {
-            e.preventDefault();
-            let u = document.getElementById("loginUser").value;
-            let p = document.getElementById("loginPass").value;
-
-            fetch(API_URL, {
-                method: "POST",
-                body: JSON.stringify({ action: "login", username: u, password: p })
-            })
-            .then(res => res.json())
-            .then(res => {
-                if (res.status === "success") {
-                    currentUser = res.user;
-                    localStorage.setItem("qlvb_user", JSON.stringify(currentUser));
-                    updateUIByRole();
-                    bootstrap.Modal.getInstance(document.getElementById("loginModal")).hide();
-                    alert("Đăng nhập thành công!");
-                } else {
-                    alert(res.message);
-                }
-            });
-        });
-
-        function logout() {
-            currentUser = null;
-            localStorage.removeItem("qlvb_user");
-            updateUIByRole();
-            applyFilters();
-        }
-
-        function checkSession() {
-            let saved = localStorage.getItem("qlvb_user");
-            if (saved) {
-                currentUser = JSON.parse(saved);
-                updateUIByRole();
-            }
-        }
-
-        function updateUIByRole() {
-            if (currentUser) {
-                document.getElementById("btnLoginModal").classList.add("d-none");
-                document.getElementById("btnLogout").classList.remove("d-none");
-                document.getElementById("userInfo").classList.remove("d-none");
-                document.getElementById("userDisplayName").innerText = currentUser.fullName;
-                document.getElementById("userDeptDisplay").innerText = currentUser.department;
-
-                if (currentUser.role === "Admin" || currentUser.role === "VP_NhapLieu") {
-                    document.getElementById("btnAddNew").classList.remove("d-none");
-                } else {
-                    document.getElementById("btnAddNew").classList.add("d-none");
-                }
-            } else {
-                document.getElementById("btnLoginModal").classList.remove("d-none");
-                document.getElementById("btnLogout").classList.add("d-none");
-                document.getElementById("userInfo").classList.add("d-none");
-                document.getElementById("btnAddNew").classList.add("d-none");
-            }
-        }
-
-        // Thêm Mới Nhiệm Vụ
-        document.getElementById("addDocForm").addEventListener("submit", (e) => {
-            e.preventDefault();
-            let payload = {
-                action: "addDocument",
-                role: currentUser.role,
-                createdUser: currentUser.fullName,
-                soVB: document.getElementById("addSoVB").value,
-                ngayDen: document.getElementById("addNgayDen").value,
-                ngayHetHan: document.getElementById("addNgayHetHan").value,
-                donViBanHanh: document.getElementById("addDonViBanHanh").value,
-                donViXuLy: document.getElementById("addDonViXuLy").value,
-                chuyenVienThamMuu: document.getElementById("addChuyenVienThamMuu").value,
-                trichYeu: document.getElementById("addTrichYeu").value
-            };
-
-            fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
-            .then(res => res.json())
-            .then(res => {
-                alert(res.message);
-                if(res.status === "success") {
-                    bootstrap.Modal.getInstance(document.getElementById("addDocModal")).hide();
-                    loadData();
-                }
-            });
-        });
-
-        // Mở Modal Cập nhật
-        function openUpdateModal(id) {
-            let item = rawData.find(d => d["ID_Văn Bản"] === id);
-            if (!item) return;
-
-            document.getElementById("updateId").value = id;
-            document.getElementById("updateSoVBText").innerText = item["Số Văn bản"];
-            document.getElementById("updateKetQua").value = item["Kết quả xử lý"] || "";
-            document.getElementById("updateNgayThucTe").value = item["Ngày xử lý thực tế"] || "";
-
-            if (currentUser && currentUser.role === "Admin") {
-                document.getElementById("adminExpertBox").classList.remove("d-none");
-                updateExpertDropdownByDept("filterDept", "updateChuyenVienThamMuu");
-            } else {
-                document.getElementById("adminExpertBox").classList.add("d-none");
+        // XUẤT EXCEL CHUẨN ĐỊNH DẠNG
+        function exportToExcel() {
+            if (!currentFilteredData || currentFilteredData.length === 0) {
+                alert("Không có dữ liệu để xuất file!");
+                return;
             }
 
-            new bootstrap.Modal(document.getElementById("updateModal")).show();
+            const exportData = currentFilteredData.map((item, index) => ({
+                "STT": index + 1,
+                "Số Văn bản": item.docNo,
+                "Ngày đến": item.arriveDate,
+                "Đơn vị ban hành": item.issuer,
+                "Trích yếu nội dung": item.summary,
+                "Ngày hết hạn": item.dueDate,
+                "Đơn vị xử lý": item.handler,
+                "Nội dung xử lý": item.processTask,
+                "Thời gian, kết quả xử lý": item.statusText || item.statusCategory
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "BaoCaoTacNhiem");
+            XLSX.writeFile(workbook, `Bao_Cao_Tac_Nhiem_${new Date().getTime()}.xlsx`);
         }
 
-        // Cập nhật kết quả
-        document.getElementById("updateForm").addEventListener("submit", (e) => {
-            e.preventDefault();
-            let payload = {
-                action: "updateResult",
-                id: document.getElementById("updateId").value,
-                ketQuaXuLy: document.getElementById("updateKetQua").value,
-                ngayXuLyThucTe: document.getElementById("updateNgayThucTe").value,
-                chuyenVienThamMuu: document.getElementById("updateChuyenVienThamMuu") ? document.getElementById("updateChuyenVienThamMuu").value : undefined
-            };
-
-            fetch(API_URL, { method: "POST", body: JSON.stringify(payload) })
-            .then(res => res.json())
-            .then(res => {
-                alert(res.message);
-                if(res.status === "success") {
-                    bootstrap.Modal.getInstance(document.getElementById("updateModal")).hide();
-                    loadData();
-                }
-            });
-        });
-
-        function formatDateDisplay(dateStr) {
-            if (!dateStr) return "";
-            if (dateStr.includes("T")) dateStr = dateStr.split("T")[0];
-            let parts = dateStr.split("-");
-            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-            return dateStr;
-        }
+        window.onload = fetchDashboardData;
+        setInterval(fetchDashboardData, 3600000);
     </script>
 </body>
 </html>
